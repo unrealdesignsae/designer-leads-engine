@@ -33,8 +33,8 @@ Saw your post about looking for a {role_seeking} at {company}.
 I'm Black, Creative Technology & CG Director at unreal.ae in Dubai.
 I specialize in real-time 3D, Unreal Engine, and experiential design for events and exhibitions.
 
-Portfolio: {portfolio_url}
-Full CV/PDF: {pdf_url}
+Portfolio (pw: 2403): {portfolio_url}
+CV/PDF: {pdf_url}
 
 Would love to chat if you're still looking. Available for freelance and project-based work.
 
@@ -49,7 +49,7 @@ I came across your post looking for a {role_seeking} at {company}.
 I'm Black, Creative Technology & CG Director at unreal.ae in Dubai.
 I specialize in real-time 3D, Unreal Engine, and experiential design for events, exhibitions, and brand experiences.
 
-Portfolio (password-protected): {portfolio_url}
+Portfolio (password: 2403): {portfolio_url}
 Full CV/PDF: {pdf_url}
 
 I'm available for freelance and project-based engagements.
@@ -59,12 +59,12 @@ Best,
 Black
 unreal.ae`,
     whatsapp:
-      "Hey {name}, saw your post about looking for a {role_seeking} at {company}. I'm Black, Creative Technology & CG Director at unreal.ae in Dubai. I specialize in real-time 3D and Unreal Engine for events and exhibitions. Portfolio: {portfolio_url}. Full CV: {pdf_url}. Available for freelance work if useful.",
+      "Hey {name}, saw your post about looking for a {role_seeking} at {company}. I'm Black, Creative Technology & CG Director at unreal.ae in Dubai. I specialize in real-time 3D and Unreal Engine for events and exhibitions. Portfolio (pw: 2403): {portfolio_url}. CV: {pdf_url}. Available for freelance work if useful.",
     instagram:
-      "Hey {name}, saw your post about {role_seeking}. I'm Black from unreal.ae Dubai — real-time 3D, Unreal Engine, events & exhibitions. Portfolio: {portfolio_url} (password protected). Full CV: {pdf_url}. Available for freelance — would love to connect.",
+      "Hey {name}, saw your post about {role_seeking}. I'm Black from unreal.ae Dubai — real-time 3D, Unreal Engine, events & exhibitions. Portfolio (pw: 2403): {portfolio_url}. CV: {pdf_url}. Available for freelance — would love to connect.",
   },
-  portfolio_url: "https://aries-black-portfolio.vercel.app/",
-  pdf_url: "https://drive.google.com/file/d/1Ql5IgVXXC9CSIDtM6emNKsX055UVNIn4/view?usp=sharing",
+  portfolio_url: "https://black-portfolio-chi.vercel.app/",
+  pdf_url: "https://drive.google.com/file/d/19KjA5-J_v2b9OfJgYVKnJfVTF0m-pp35/view?usp=sharing",
   accent_color: "#3ecf8e",
   created_at: "2026-06-17T08:00:00Z",
   is_active: true,

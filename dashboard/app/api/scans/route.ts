@@ -13,6 +13,9 @@ export interface ScanRequest {
   must_include?: string[];
   must_exclude?: string[];
   score_with_llm?: boolean;
+  require_email?: boolean;
+  require_linkedin?: boolean;
+  require_phone?: boolean;
 }
 
 export async function GET(request: Request) {
@@ -55,6 +58,9 @@ export async function POST(request: Request) {
     must_include: body.must_include ?? [],
     must_exclude: body.must_exclude ?? [],
     score_with_llm: body.score_with_llm ?? true,
+    require_email: body.require_email ?? false,
+    require_linkedin: body.require_linkedin ?? false,
+    require_phone: body.require_phone ?? false,
     profile_id: body.profile_id ?? null,
   };
 

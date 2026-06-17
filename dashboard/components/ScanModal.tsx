@@ -11,6 +11,9 @@ interface ScanConfig {
   must_include: string;
   must_exclude: string;
   score_with_llm: boolean;
+  require_email: boolean;
+  require_linkedin: boolean;
+  require_phone: boolean;
 }
 
 const DEFAULTS: ScanConfig = {
@@ -20,6 +23,9 @@ const DEFAULTS: ScanConfig = {
   must_include: "",
   must_exclude: "",
   score_with_llm: true,
+  require_email: false,
+  require_linkedin: false,
+  require_phone: false,
 };
 
 const RECENCY_OPTIONS = [
@@ -57,6 +63,9 @@ export default function ScanModal({ open, onClose }: ScanModalProps) {
         must_include: config.must_include ? config.must_include.split(",").map((s) => s.trim()).filter(Boolean) : [],
         must_exclude: config.must_exclude ? config.must_exclude.split(",").map((s) => s.trim()).filter(Boolean) : [],
         score_with_llm: config.score_with_llm,
+        require_email: config.require_email,
+        require_linkedin: config.require_linkedin,
+        require_phone: config.require_phone,
       };
       const res = await fetch("/api/scans", {
         method: "POST",
@@ -170,6 +179,37 @@ export default function ScanModal({ open, onClose }: ScanModalProps) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Contact requirement */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-2">
+                  Require contact info in post
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: "require_email" as const, label: "Has email" },
+                    { key: "require_linkedin" as const, label: "Has LinkedIn" },
+                    { key: "require_phone" as const, label: "Has phone" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => set(opt.key, !config[opt.key])}
+                      className={[
+                        "px-3 py-1.5 rounded-md border text-xs transition-colors",
+                        config[opt.key]
+                          ? "border-green bg-green/10 text-green"
+                          : "border-border text-text-dim hover:border-border-hover",
+                      ].join(" ")}
+                    >
+                      {config[opt.key] ? "✓ " : ""}{opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-text-dim mt-1.5">
+                  Only keep leads that have visible contact details in their post.
+                </p>
               </div>
 
               {/* Keywords */}
