@@ -18,6 +18,7 @@ const STATUS_STEPS = [
   { key: "replied", label: "Replied" },
   { key: "interested", label: "Interested" },
   { key: "archived", label: "Archived" },
+  { key: "failed", label: "Failed" },
 ];
 
 export default function LeadsPage() {
