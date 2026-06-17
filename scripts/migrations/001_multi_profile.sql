@@ -26,7 +26,7 @@ create table if not exists outreach (
   profile_id uuid not null references profiles(id) on delete cascade,
   channel text not null check (channel in ('linkedin', 'email', 'whatsapp')),
   message_body text not null,
-  status text not null default 'ready_to_send' check (status in ('ready_to_send', 'sent', 'replied', 'bounced', 'skipped')),
+  status text not null default 'ready_to_send' check (status in ('ready_to_send', 'queued', 'sent', 'replied', 'bounced', 'skipped')),
   prepared_at timestamptz not null default now(),
   sent_at timestamptz,
   replied_at timestamptz,
