@@ -45,13 +45,16 @@ SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
 
 DEFAULT_QUERIES = [
-    "site:linkedin.com hiring 3d designer OR 3d artist dubai uae freelance 2026",
-    "site:linkedin.com creative director OR art director events hiring dubai 2026",
-    "site:linkedin.com freelance 3D dubai event exhibition designer artist",
-    "site:linkedin.com/jobs 3d designer OR 3d artist OR CG generalist dubai 2026",
-    "site:linkedin.com/jobs creative director OR art director dubai events 2026",
-    "dubai creative director OR art director hiring 3D OR CG freelance events 2026",
-    "uae 3D designer OR 3D artist event exhibition freelance hiring 2026",
+    "site:linkedin.com/posts hiring \"3d designer\" OR \"3d artist\" dubai OR abu dhabi freelance 2026",
+    "site:linkedin.com/posts \"looking for\" \"3d designer\" OR \"creative director\" dubai events OR exhibition 2026",
+    "site:linkedin.com/posts recruiter \"3d designer\" OR \"art director\" dubai freelance OR events 2026",
+    "site:linkedin.com/posts \"need a\" designer OR artist 3D OR CG dubai OR uae freelance OR contract",
+    "site:linkedin.com/in recruiter OR hiring \"creative director\" OR \"art director\" dubai events 3D",
+    "site:linkedin.com/jobs \"3d designer\" OR \"3d artist\" OR \"CG artist\" dubai posted last 30 days",
+    "site:linkedin.com/jobs \"creative director\" OR \"art director\" OR \"lead designer\" dubai events 3D",
+    "dubai creative director OR art director hiring freelance 3D OR CG events exhibition 2026 -jobs -indeed -glassdoor",
+    "uae \"senior 3d designer\" OR \"lead 3d artist\" freelance OR contract events OR exhibition OR experiential",
+    "\"3d designer\" OR \"3d artist\" dubai \"freelance\" OR \"contract\" events OR exhibition OR experiential 2026",
 ]
 
 FIT_SCORE_PROMPT = """\
@@ -80,7 +83,7 @@ class ScanConfig:
     target_count: int = 20
     results_per_query: int = 10
     min_quality: int = 1
-    recency_days: int = 365
+    recency_days: int = 30
     location: str = "UAE"
     must_include: list = field(default_factory=list)
     must_exclude: list = field(default_factory=list)
@@ -172,20 +175,39 @@ def search_web(query, limit=10):
     results = data.get("data") or data.get("results") or []
     leads = []
     for item in results:
-        description = item.get("description") or item.get("snippet") or item.get("markdown") or ""
-        url = item.get("url") or item.get("link") or ""
+        url = item.get("url") or ""
         title = item.get("title") or ""
-        email, phone = _extract_contact(description + " " + title)
+        description = item.get("description") or item.get("snippet") or item.get("markdown") or ""
+        full_text = title + " " + description
+
+        # Skip non-hiring posts: must contain hiring-intent language
+        if not _is_hiring_post(full_text):
+            continue
+
+        # Extract name from LinkedIn post title: "John Doe's Post" → "John Doe"
+        name = _extract_name_from_title(title, url)
+        # Extract company from description or URL
+        company = _extract_company(full_text, url)
+        # Extract role from description
+        role_seeking = _extract_role(full_text)
+        # Extract LinkedIn handle
         linkedin_handle = None
         if "linkedin.com/in/" in url:
             linkedin_handle = url.split("linkedin.com/in/")[-1].split("/")[0].split("?")[0]
+        elif "linkedin.com/posts/" in url:
+            # For posts, extract the author's handle from URL: linkedin.com/posts/handle_slug/path
+            parts = url.split("linkedin.com/posts/")
+            if len(parts) > 1:
+                linkedin_handle = parts[1].split("/")[0].split("-")[0] if "-" in parts[1] else None
+
+        email, phone = _extract_contact(full_text)
         channels = _channels(email, phone, linkedin_handle)
         pub_date = (item.get("date") or item.get("publishedDate") or datetime.now().strftime("%Y-%m-%d"))[:10]
         leads.append({
-            "name": item.get("author") or item.get("name") or "",
+            "name": name,
             "title": title,
-            "company": item.get("company") or item.get("siteName") or "",
-            "role_seeking": title,
+            "company": company,
+            "role_seeking": role_seeking or title,
             "location": "UAE",
             "post_url": url,
             "post_date": pub_date,
@@ -196,9 +218,82 @@ def search_web(query, limit=10):
             "contact_linkedin": linkedin_handle,
             "channels_available": channels,
             "notes": description[:500],
-            "content_hash": _hash(item.get("author"), url, title),
+            "content_hash": _hash(name, url, title),
         })
     return leads
+
+
+def _is_hiring_post(text):
+    """Return True if the text contains hiring-intent language."""
+    text_lower = text.lower()
+    hiring_signals = [
+        "hiring", "looking for", "seeking", "we need", "join our team",
+        "send your cv", "apply now", "job opening", "we're hiring",
+        "immediate hiring", "urgent requirement", "vacancy", "position open",
+        "dm me", "reach out", "drop your portfolio", "send portfolio",
+    ]
+    score = sum(1 for signal in hiring_signals if signal in text_lower)
+    return score >= 1
+
+
+def _extract_name_from_title(title, url):
+    """Extract person name from LinkedIn post titles like 'John Doe's Post - LinkedIn'."""
+    # Try: "Name's Post - LinkedIn" pattern
+    m = re.search(r"^(.+?)'s Post", title)
+    if m:
+        name = m.group(1).strip()
+        if name and len(name) < 80 and not name.startswith("http"):
+            return name
+    # Try: linkedin.com/in/handle from URL
+    if "linkedin.com/in/" in url:
+        handle = url.split("linkedin.com/in/")[-1].split("/")[0].split("?")[0]
+        # Convert handle to name: john-doe-123 → John Doe
+        name_part = handle.split("-")[0]
+        if len(handle.split("-")) > 1 and not handle.split("-")[1].isdigit():
+            name_part = " ".join(handle.split("-")[:2])
+        name_part = name_part.replace("-", " ").title()
+        if name_part:
+            return name_part
+    # Fallback: first 60 chars of title
+    return title[:60].strip() if title else ""
+
+
+def _extract_company(text, url):
+    """Try to extract company name from description text or URL."""
+    # Common patterns in hiring posts
+    patterns = [
+        r"at\s+([\w\s&.'-]{2,50}?)(?:\.|,|\s+in\s+Dubai|\s+is\s+(?:looking|hiring)|\s+we\s+are|\n|\r)",
+        r"([\w\s&.'-]{3,50}?)\s+is\s+(?:looking|hiring|seeking)",
+        r"(?:join|at)\s+([\w\s&.'-]{3,50}?)(?:\.|\s+in\s+|$)",
+    ]
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            company = m.group(1).strip()
+            if len(company) >= 2 and not company.lower() in ("a", "an", "the", "and"):
+                return company
+    # Look for company name in LinkedIn URL
+    if "linkedin.com/company/" in url:
+        parts = url.split("linkedin.com/company/")
+        if len(parts) > 1:
+            return parts[1].split("/")[0].replace("-", " ").title()
+    return ""
+
+
+def _extract_role(text):
+    """Extract the role being hired from description."""
+    patterns = [
+        r"(?:hiring|looking for|seeking|need(?:s)?)\s+(?:a|an|for\s+(?:a|an))?\s*(.+?)(?:\.|,|\n|\r|in\s+Dubai|in\s+Abu\s+Dhabi|in\s+UAE|apply|send|$)",
+        r"(?:position|role|job)\s+(?:of|for|:)\s+(.+?)(?:\.|,|\n|\r|$)",
+        r"(?:recruit(?:ing|ment)\s+(?:for|a|an))\s+(.+?)(?:\.|,|\n|\r|$)",
+    ]
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            role = m.group(1).strip()
+            if 3 < len(role) < 100 and not role.lower().startswith("http"):
+                return role
+    return ""
 
 
 def score_lead_llm(lead, profile_description):
