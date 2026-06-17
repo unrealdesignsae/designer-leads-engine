@@ -13,9 +13,31 @@ from datetime import datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from dotenv import load_dotenv
+_ENV_PATH = os.path.join(os.path.dirname(__file__), "..", ".env.local")
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env.local"))
+
+def _load_env(path):
+    """Load KEY=VALUE pairs from .env.local. Uses python-dotenv if present,
+    else a minimal parser so the scanner runs with zero pip installs (Hermes-safe)."""
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(path)
+        return
+    except ImportError:
+        pass
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_env(_ENV_PATH)
 
 FIRECRAWL_SEARCH_URL = "https://api.firecrawl.dev/v1/search"
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
@@ -285,7 +307,7 @@ def insert_lead(lead_data, profile_id, rating=3, fit_reason=""):
         "contact_email": lead_data.get("contact_email"),
         "contact_phone": lead_data.get("contact_phone"),
         "contact_linkedin": lead_data.get("contact_linkedin"),
-        "channels_available": json.dumps(lead_data.get("channels_available", ["linkedin"])),
+        "channels_available": lead_data.get("channels_available", ["linkedin"]),
         "status": "new",
         "rating": rating,
         "notes": notes[:1000],
@@ -309,17 +331,31 @@ def record_scan(scan_date, profile_id, leads_found, new_count, config):
         "replies_received": 0,
         "status": "completed",
         "vault_report_path": None,
-        "scan_config": json.dumps({
+        "scan_config": {
             "target_count": config.target_count,
             "min_quality": config.min_quality,
             "recency_days": config.recency_days,
             "location": config.location,
             "must_include": config.must_include,
             "must_exclude": config.must_exclude,
-        }),
+        },
     }
     try:
-        supabase_insert("daily_scans", record)
+        # Upsert on (profile_id, scan_date): re-running a scan the same day
+        # updates the existing row's counts instead of colliding on the unique index.
+        req = Request(
+            SUPABASE_URL.rstrip("/") + "/rest/v1/daily_scans?on_conflict=profile_id,scan_date",
+            data=json.dumps([record]).encode("utf-8"),
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": "Bearer " + SUPABASE_KEY,
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=representation",
+            },
+            method="POST",
+        )
+        with urlopen(req, timeout=30) as resp:
+            resp.read()
     except Exception as e:
         print("[scanner] record_scan error: %s" % e)
 

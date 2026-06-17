@@ -64,16 +64,19 @@ export async function POST(request: Request) {
   if (supabase && config.profile_id) {
     const { data, error } = await supabase
       .from("daily_scans")
-      .insert({
-        profile_id: config.profile_id,
-        scan_date: new Date().toISOString().split("T")[0],
-        leads_found: 0,
-        new_leads: 0,
-        dms_sent: 0,
-        replies_received: 0,
-        status: "queued",
-        scan_config: JSON.stringify(config),
-      })
+      .upsert(
+        {
+          profile_id: config.profile_id,
+          scan_date: new Date().toISOString().split("T")[0],
+          leads_found: 0,
+          new_leads: 0,
+          dms_sent: 0,
+          replies_received: 0,
+          status: "queued",
+          scan_config: config,
+        },
+        { onConflict: "profile_id,scan_date" }
+      )
       .select("*")
       .single();
 

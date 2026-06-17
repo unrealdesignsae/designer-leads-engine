@@ -16,7 +16,7 @@ export const LEAD_STATUS_META: Record<
   selected: { label: "Selected", color: "var(--color-yellow)" },
   queued: { label: "Queued", color: "var(--color-purple)" },
   ready_to_send: { label: "Ready", color: "var(--color-blue)" },
-  sent: { label: "Sent", color: "var(--color-blue)" },
+  sent: { label: "Sent", color: "var(--color-purple)" },
   replied: { label: "Replied", color: "var(--color-green)" },
   interested: { label: "Interested", color: "var(--color-green)" },
   declined: { label: "Declined", color: "var(--color-text-dim)", dimmed: true },
