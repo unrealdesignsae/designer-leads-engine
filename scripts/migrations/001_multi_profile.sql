@@ -24,12 +24,13 @@ create table if not exists outreach (
   id bigserial primary key,
   lead_id bigint not null references leads(id) on delete cascade,
   profile_id uuid not null references profiles(id) on delete cascade,
-  channel text not null check (channel in ('linkedin', 'email', 'whatsapp')),
+  channel text not null check (channel in ('linkedin', 'email', 'whatsapp', 'instagram')),
   message_body text not null,
-  status text not null default 'ready_to_send' check (status in ('ready_to_send', 'queued', 'sent', 'replied', 'bounced', 'skipped')),
+  status text not null default 'ready_to_send' check (status in ('ready_to_send', 'queued', 'sent', 'replied', 'bounced', 'skipped', 'failed')),
   prepared_at timestamptz not null default now(),
   sent_at timestamptz,
   replied_at timestamptz,
   reply_snippet text,
-  error text
+  error text,
+  provider_id text
 );
