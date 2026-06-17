@@ -1,3 +1,5 @@
+"use client";
+
 import LeadTable from "@/components/LeadTable";
 import { Lead } from "@/lib/types";
 
