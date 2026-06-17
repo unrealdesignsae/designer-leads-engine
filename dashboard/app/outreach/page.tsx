@@ -89,8 +89,15 @@ export default function OutreachPage() {
           Outreach Queue
         </h1>
         <p className="text-text-muted text-sm mt-2">
-          Prepared messages for {activeProfile.name}. Dry-run only.
+          Prepared messages for {activeProfile.name}.
         </p>
+        <div className="mt-3 inline-flex items-start gap-2 rounded-lg border border-yellow/30 bg-yellow/5 px-3 py-2 text-xs text-text-secondary">
+          <span className="text-yellow">●</span>
+          <span>
+            This system never sends. Copy a message, send it yourself on LinkedIn or email,
+            then click <span className="text-text-primary font-medium">I sent this</span> to log it.
+          </span>
+        </div>
       </motion.div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -103,7 +110,7 @@ export default function OutreachPage() {
 
             <div className="space-y-3">
               {group.rows.map((row) => {
-                const lead = row.lead || state.leads.find((item) => item.id === row.lead_id);
+                const lead = state.leads.find((item) => item.id === row.lead_id) || row.lead;
                 const meta = lead ? LEAD_STATUS_META[lead.status] : LEAD_STATUS_META.new;
                 const timeline = state.outreach.filter((item) => item.lead_id === row.lead_id);
                 return (
@@ -145,8 +152,8 @@ export default function OutreachPage() {
                     {row.status !== "replied" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {row.status === "ready_to_send" ? (
-                          <button type="button" onClick={() => markSent(row)} className="px-3 py-1.5 rounded-md border border-green-border text-xs text-green">
-                            Mark sent
+                          <button type="button" onClick={() => markSent(row)} title="Logs that you already sent this manually. Does not send anything." className="px-3 py-1.5 rounded-md border border-green-border text-xs text-green">
+                            I sent this
                           </button>
                         ) : null}
                         <button type="button" onClick={() => markReplied(row, false)} className="px-3 py-1.5 rounded-md border border-border text-xs text-text-secondary">
