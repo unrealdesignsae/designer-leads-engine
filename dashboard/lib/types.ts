@@ -9,6 +9,7 @@ export type LeadStatus =
   | "replied"
   | "interested"
   | "declined"
+  | "archived"
   | "failed";
 
 export type OutreachChannel = "linkedin" | "email" | "whatsapp" | "instagram";

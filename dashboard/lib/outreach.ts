@@ -20,6 +20,7 @@ export const LEAD_STATUS_META: Record<
   replied: { label: "Replied", color: "var(--color-green)" },
   interested: { label: "Interested", color: "var(--color-green)" },
   declined: { label: "Declined", color: "var(--color-text-dim)", dimmed: true },
+  archived: { label: "Archived", color: "var(--color-text-dim)", dimmed: true },
   failed: { label: "Failed", color: "var(--color-crimson)", dimmed: true },
 };
 

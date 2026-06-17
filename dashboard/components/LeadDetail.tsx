@@ -9,6 +9,8 @@ interface LeadDetailProps {
   onClose: () => void;
   onShortlist: (id: number) => void;
   onPrepare: (id: number) => void;
+  onArchive: (id: number) => void;
+  onDelete: (id: number) => void;
   loading: boolean;
 }
 
@@ -17,6 +19,8 @@ export default function LeadDetail({
   onClose,
   onShortlist,
   onPrepare,
+  onArchive,
+  onDelete,
   loading,
 }: LeadDetailProps) {
   const canShortlist = lead.status === "new";
@@ -117,6 +121,21 @@ export default function LeadDetail({
                 View source
               </a>
             ) : null}
+            <button
+              type="button"
+              onClick={() => onArchive(lead.id)}
+              disabled={lead.status === "archived"}
+              className="px-4 py-2.5 text-sm font-medium text-text-secondary bg-surface border border-border rounded-md disabled:opacity-40"
+            >
+              Archive
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(lead.id)}
+              className="px-4 py-2.5 text-sm font-medium text-crimson bg-surface border border-crimson/40 rounded-md"
+            >
+              Delete
+            </button>
           </div>
         </div>
       </motion.aside>

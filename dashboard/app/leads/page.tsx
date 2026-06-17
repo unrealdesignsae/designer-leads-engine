@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import LeadTable from "@/components/LeadTable";
 import { SkeletonTable } from "@/components/Skeleton";
-import { prepareOutreach, selectLeads } from "@/lib/api";
+import { deleteLead, prepareOutreach, selectLeads, updateLead } from "@/lib/api";
 import { useProfiles } from "@/lib/profiles";
 import { useLeads } from "@/lib/store";
 import { useToast } from "@/components/Toast";
@@ -17,6 +17,7 @@ const STATUS_STEPS = [
   { key: "ready_to_send", label: "Ready" },
   { key: "replied", label: "Replied" },
   { key: "interested", label: "Interested" },
+  { key: "archived", label: "Archived" },
 ];
 
 export default function LeadsPage() {
@@ -57,6 +58,38 @@ export default function LeadsPage() {
       }
     },
     [activeProfile.id, dispatch, router, toast]
+  );
+
+  const handleArchive = useCallback(
+    async (id: number) => {
+      const lead = state.leads.find((item) => item.id === id);
+      if (!lead) return;
+      if (!window.confirm(`Archive ${lead.name}? It will stay in the database but leave the active pipeline.`)) return;
+      try {
+        const updated = await updateLead(id, { status: "archived" });
+        dispatch({ type: "UPDATE_LEAD", lead: updated });
+        toast(`${lead.name} archived`, "success");
+      } catch {
+        toast("Failed to archive lead", "error");
+      }
+    },
+    [dispatch, state.leads, toast]
+  );
+
+  const handleDelete = useCallback(
+    async (id: number) => {
+      const lead = state.leads.find((item) => item.id === id);
+      if (!lead) return;
+      if (!window.confirm(`Delete ${lead.name}? This removes the lead and its outreach rows from Supabase.`)) return;
+      try {
+        await deleteLead(id);
+        dispatch({ type: "DELETE_LEAD", id });
+        toast(`${lead.name} deleted`, "success");
+      } catch {
+        toast("Failed to delete lead", "error");
+      }
+    },
+    [dispatch, state.leads, toast]
   );
 
   const handleRefresh = useCallback(() => {
@@ -110,6 +143,8 @@ export default function LeadsPage() {
           leads={filtered}
           onSelect={handleSelect}
           onPrepare={handlePrepare}
+          onArchive={handleArchive}
+          onDelete={handleDelete}
           onRefresh={handleRefresh}
           loading={state.loading}
           scanning={state.scanning}

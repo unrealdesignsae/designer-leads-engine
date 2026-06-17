@@ -84,3 +84,20 @@ export async function patchOutreach(
     body: JSON.stringify(payload),
   });
 }
+
+export async function updateLead(
+  id: number,
+  payload: Partial<Lead>
+): Promise<Lead> {
+  return requestJson<Lead>(`${API_BASE}/leads/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteLead(id: number): Promise<{ ok: boolean; id: number }> {
+  return requestJson<{ ok: boolean; id: number }>(`${API_BASE}/leads/${id}`, {
+    method: "DELETE",
+  });
+}

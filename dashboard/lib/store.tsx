@@ -29,6 +29,8 @@ type Action =
   | { type: "PREPARE_DONE"; leadIds: number[]; outreach: Outreach[] }
   | { type: "SCAN_START" }
   | { type: "SCAN_DONE"; scan: DailyScan; leads: Lead[] }
+  | { type: "UPDATE_LEAD"; lead: Lead }
+  | { type: "DELETE_LEAD"; id: number }
   | { type: "UPDATE_OUTREACH"; outreach: Outreach; leadStatus?: Lead["status"] };
 
 function reducer(state: State, action: Action): State {
@@ -79,6 +81,19 @@ function reducer(state: State, action: Action): State {
         scanning: false,
         leads: action.leads,
         scans: [action.scan, ...state.scans],
+      };
+    case "UPDATE_LEAD":
+      return {
+        ...state,
+        leads: state.leads.map((lead) =>
+          lead.id === action.lead.id ? action.lead : lead
+        ),
+      };
+    case "DELETE_LEAD":
+      return {
+        ...state,
+        leads: state.leads.filter((lead) => lead.id !== action.id),
+        outreach: state.outreach.filter((row) => row.lead_id !== action.id),
       };
     case "UPDATE_OUTREACH":
       if (!action.leadStatus) {

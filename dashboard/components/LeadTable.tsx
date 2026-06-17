@@ -12,6 +12,8 @@ interface LeadTableProps {
   leads: Lead[];
   onSelect: (ids: number[]) => void;
   onPrepare: (ids: number[]) => void;
+  onArchive: (id: number) => void;
+  onDelete: (id: number) => void;
   onRefresh: () => void;
   loading: boolean;
   scanning: boolean;
@@ -21,6 +23,8 @@ export default function LeadTable({
   leads,
   onSelect,
   onPrepare,
+  onArchive,
+  onDelete,
   onRefresh,
   loading,
   scanning,
@@ -136,6 +140,7 @@ export default function LeadTable({
               <TH>Contact</TH>
               <TH>Status</TH>
               <TH>Date</TH>
+              <TH>Actions</TH>
             </tr>
           </thead>
           <tbody>
@@ -176,6 +181,25 @@ export default function LeadTable({
                     <td className="p-3"><ContactBadges lead={lead} /></td>
                     <td className="p-3"><StatusBadge status={lead.status} /></td>
                     <td className="p-3 text-xs text-text-muted font-mono whitespace-nowrap">{lead.post_date || "-"}</td>
+                    <td className="p-3" onClick={(event) => event.stopPropagation()}>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onArchive(lead.id)}
+                          disabled={lead.status === "archived"}
+                          className="px-2 py-1 rounded border border-border text-[11px] text-text-muted hover:text-text-primary disabled:opacity-40"
+                        >
+                          Archive
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(lead.id)}
+                          className="px-2 py-1 rounded border border-crimson/40 text-[11px] text-crimson hover:bg-crimson/10"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </motion.tr>
                 );
               })}
@@ -222,6 +246,23 @@ export default function LeadTable({
                   </div>
                   <StatusBadge status={lead.status} />
                 </div>
+                <div className="mt-3 flex gap-2" onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => onArchive(lead.id)}
+                    disabled={lead.status === "archived"}
+                    className="flex-1 px-3 py-2 rounded-md border border-border text-xs text-text-muted disabled:opacity-40"
+                  >
+                    Archive
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(lead.id)}
+                    className="flex-1 px-3 py-2 rounded-md border border-crimson/40 text-xs text-crimson"
+                  >
+                    Delete
+                  </button>
+                </div>
               </motion.article>
             );
           })}
@@ -234,6 +275,8 @@ export default function LeadTable({
           onClose={() => setActiveLead(null)}
           onShortlist={(id) => onSelect([id])}
           onPrepare={(id) => onPrepare([id])}
+          onArchive={onArchive}
+          onDelete={onDelete}
           loading={loading}
         />
       ) : null}
