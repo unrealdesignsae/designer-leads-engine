@@ -1,75 +1,13 @@
 # Designer Leads Engine
 
-Automated daily lead scanner + DM sender + dashboard for finding Creative Directors / 3D Designers in UAE.
+Automated lead scanner, outreach prep queue, and dashboard for finding creative and 3D opportunities in the UAE.
 
-> Built for unreal.ae — Black's automated outreach pipeline.
+## Operating Model
 
-## How It Works
-
-1. **Daily Scan** (8 AM GST) — Searches LinkedIn + web for leads
-2. **Deduplication** — Content hash + URL matching
-3. **Vault Report** — Saved to Obsidian Second Brain
-4. **Dashboard** — Checkbox UI to select leads
-5. **DM Dispatch** — LinkedIn (Unipile) + Email + WhatsApp
-6. **Reply Tracking** — Interested replies surfaced immediately
-
-## Architecture
-
-```
-Hermes Cron → Scanner → SQLite DB → Supabase → Vercel Dashboard
-                         ↓
-                    Unipile MCP → LinkedIn DM
-                         ↓
-                    Email SMTP
-                         ↓
-                    WhatsApp (Unipile)
-```
-
-## Project Structure
-
-```
-designer-leads-engine/
-├── data/              # SQLite database
-├── scripts/
-│   ├── init_db.py     # Database initialization
-│   ├── scanner.py     # Daily lead scanner
-│   └── dispatcher.py  # DM sender
-├── dashboard/         # Next.js Vercel dashboard
-├── vault/             # Obsidian vault integration
-└── README.md
-```
-
-## Setup
-
-```bash
-# Init database
-python scripts/init_db.py
-
-# Run scanner
-python scripts/scanner.py
-
-# Dispatch selected leads
-python scripts/dispatcher.py
-```
-
-## Cron Job
-
-```
-hermes cron create "every day 8am" \
-  --name "designer-leads-scanner" \
-  --prompt "Run the designer leads scanner..." \
-  --skills designer-leads-scanner
-```
-
-## Portfolio Links
-
-- Website: https://aries-black-portfolio.vercel.app/ (password-protected)
-- PDF: https://drive.google.com/file/d/1Ql5IgVXXC9CSIDtM6emNKsX055UVNIn4/view?usp=sharing
-
-## Status Flow
-
-```
-new → selected → contacted → replied → interested
-                 ↘ failed
-                 ↘ declined
-```
+- Scanner runtime: recommend `Hermes` only. One scheduler is easier to reason about than split cron ownership.
+- Dispatcher runtime: recommend `local` only until live-send is explicitly approved. It keeps the dry-run boundary closest to the operator.
+- Best LLM for lead reasoning and message personalization: `Claude Sonnet 4.6`. Strong judgment for fit-scoring at daily volume and reliable brand-voice message drafting, while keeping the whole stack on one provider (Claude + Hermes). Since every message is operator-reviewed before sending, Opus-tier spend is unnecessary; reserve `Claude Opus 4.8` only for future fully-autonomous, no-review generation, and `Claude Haiku 4.5` as the high-volume fallback.
+- Multi-profile model: every profile is its own campaign with separate scan queries, templates, portfolio links, outreach queue, and dashboard context.
+- Outreach lifecycle: `new -> selected -> queued -> ready_to_send -> sent -> replied -> interested/declined/failed`.
+- Dry-run guardrail: TypeScript defaults to `const DRY_RUN = process.env.DISPATCH_LIVE !== 'true'`. Python defaults to `DRY_RUN = True`.
+- Enabling live sending: TypeScript requires `DISPATCH_LIVE=true`. Python requires manually setting `DRY_RUN = False`. Neither path is active by default in this build.

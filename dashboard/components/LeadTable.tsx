@@ -1,37 +1,76 @@
 "use client";
 
-import { Lead } from "@/lib/types";
-import { useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import LeadDetail from "./LeadDetail";
+import { LEAD_STATUS_META } from "@/lib/outreach";
+import type { Lead } from "@/lib/types";
 
-const STATUS_COLORS: Record<string, string> = {
-  new: "bg-blue-100 text-blue-800",
-  selected: "bg-yellow-100 text-yellow-800",
-  contacted: "bg-purple-100 text-purple-800",
-  replied: "bg-indigo-100 text-indigo-800",
-  interested: "bg-green-100 text-green-800",
-  declined: "bg-red-100 text-red-800",
-  failed: "bg-gray-100 text-gray-800",
-};
-
-const CHANNEL_ICONS: Record<string, string> = {
-  linkedin: "🔗",
-  email: "📧",
-  whatsapp: "💬",
-};
+type SortMode = "rating" | "newest" | "name" | "company";
 
 interface LeadTableProps {
   leads: Lead[];
   onSelect: (ids: number[]) => void;
-  onDispatch: (ids: number[]) => void;
+  onPrepare: (ids: number[]) => void;
+  onRefresh: () => void;
   loading: boolean;
+  scanning: boolean;
 }
 
-export default function LeadTable({ leads, onSelect, onDispatch, loading }: LeadTableProps) {
+export default function LeadTable({
+  leads,
+  onSelect,
+  onPrepare,
+  onRefresh,
+  loading,
+  scanning,
+}: LeadTableProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortMode>("rating");
+
+  const visibleLeads = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const searched = normalized
+      ? leads.filter((lead) =>
+          [
+            lead.name,
+            lead.company,
+            lead.role_seeking,
+            lead.location,
+            lead.source,
+            lead.notes || "",
+            lead.contact_email || "",
+            lead.contact_linkedin || "",
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalized)
+        )
+      : leads;
+
+    return [...searched].sort((a, b) => {
+      if (sort === "rating") {
+        return (
+          b.rating - a.rating ||
+          new Date(b.post_date).getTime() - new Date(a.post_date).getTime()
+        );
+      }
+      if (sort === "newest") return new Date(b.post_date).getTime() - new Date(a.post_date).getTime();
+      if (sort === "name") return a.name.localeCompare(b.name);
+      return a.company.localeCompare(b.company);
+    });
+  }, [leads, query, sort]);
+
+  const actionable = useMemo(
+    () => visibleLeads.filter((lead) => lead.status === "new" || lead.status === "selected"),
+    [visibleLeads]
+  );
 
   const toggle = useCallback((id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
+    setSelected((current) => {
+      const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
@@ -39,136 +78,206 @@ export default function LeadTable({ leads, onSelect, onDispatch, loading }: Lead
   }, []);
 
   const toggleAll = useCallback(() => {
-    const selectable = leads.filter((l) => l.status === "new");
-    if (selected.size === selectable.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(selectable.map((l) => l.id)));
-    }
-  }, [leads, selected]);
+    const ids = actionable.map((lead) => lead.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
+    setSelected(allSelected ? new Set() : new Set(ids));
+  }, [actionable, selected]);
 
-  if (!leads.length) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <p className="text-lg">No leads yet</p>
-        <p className="text-sm mt-1">Leads will appear here after the daily scan runs.</p>
-      </div>
-    );
-  }
-
-  const selectable = leads.filter((l) => l.status === "new");
+  const selectedIds = Array.from(selected);
+  const allVisibleSelected = actionable.length > 0 && actionable.every((lead) => selected.has(lead.id));
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-2">
-          <button
-            onClick={() => onSelect(Array.from(selected))}
-            disabled={selected.size === 0 || loading}
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-yellow-700 transition"
-          >
-            Mark Selected ({selected.size})
-          </button>
-          <button
-            onClick={() => onDispatch(Array.from(selected))}
-            disabled={selected.size === 0 || loading}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-green-700 transition"
-          >
-            🚀 Send DMs ({selected.size})
-          </button>
-        </div>
-        <span className="text-sm text-gray-500">
-          {selectable.length} new · {leads.length} total
-        </span>
-      </div>
+    <div className="space-y-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="border border-border rounded-lg bg-surface p-3 sm:p-4">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <div className="flex flex-col sm:flex-row gap-2 flex-1">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search name, company, role, source, notes..."
+              className="w-full h-10 px-3 rounded-md bg-black/20 border border-border text-sm text-text-primary placeholder:text-text-dim"
+            />
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as SortMode)}
+              className="h-10 px-3 rounded-md bg-black/20 border border-border text-sm text-text-secondary min-w-[160px]"
+            >
+              <option value="rating">Sort: highest rating</option>
+              <option value="newest">Sort: newest post</option>
+              <option value="name">Sort: name</option>
+              <option value="company">Sort: company</option>
+            </select>
+          </div>
 
-      <div className="overflow-x-auto border rounded-lg">
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => onSelect(selectedIds)} disabled={selectedIds.length === 0 || loading} className="px-4 py-2 text-sm font-medium text-text-primary bg-page border border-border rounded-md disabled:opacity-40">
+              Shortlist ({selectedIds.length})
+            </button>
+            <button onClick={() => onPrepare(selectedIds)} disabled={selectedIds.length === 0 || loading} className="px-4 py-2 text-sm font-medium text-black bg-green border border-green rounded-md disabled:opacity-40">
+              {loading ? "Preparing..." : `Prepare outreach (${selectedIds.length})`}
+            </button>
+            <button onClick={onRefresh} disabled={scanning} className="px-4 py-2 text-sm font-medium text-text-secondary bg-page border border-border rounded-md disabled:opacity-40">
+              {scanning ? "Scanning" : "Run Scan"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="hidden lg:block border border-border rounded-lg overflow-hidden bg-page">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left">
-            <tr>
-              <th className="p-3 w-10">
-                <input
-                  type="checkbox"
-                  onChange={toggleAll}
-                  checked={selected.size > 0 && selected.size === selectable.length}
-                  className="rounded"
-                />
+          <thead>
+            <tr className="border-b border-border bg-surface">
+              <th className="p-3 w-11 text-left">
+                <input type="checkbox" checked={allVisibleSelected} onClick={toggleAll} readOnly aria-label="Select all actionable leads" />
               </th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Role Seeking</th>
-              <th className="p-3">Company</th>
-              <th className="p-3">Location</th>
-              <th className="p-3">Channels</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Date</th>
-              <th className="p-3">Link</th>
+              <TH>Lead</TH>
+              <TH>Opportunity</TH>
+              <TH>Fit</TH>
+              <TH>Contact</TH>
+              <TH>Status</TH>
+              <TH>Date</TH>
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead) => (
-              <tr
-                key={lead.id}
-                className={`border-t hover:bg-gray-50 ${
-                  selected.has(lead.id) ? "bg-yellow-50" : ""
-                }`}
-              >
-                <td className="p-3">
-                  {lead.status === "new" && (
-                    <input
-                      type="checkbox"
-                      checked={selected.has(lead.id)}
-                      onChange={() => toggle(lead.id)}
-                      className="rounded"
-                    />
-                  )}
-                </td>
-                <td className="p-3 font-medium">{lead.name || "Unknown"}</td>
-                <td className="p-3">{lead.role_seeking || "—"}</td>
-                <td className="p-3 text-gray-600">{lead.company || "—"}</td>
-                <td className="p-3 text-gray-600">{lead.location || "—"}</td>
-                <td className="p-3">
-                  <div className="flex gap-1">
-                    {(Array.isArray(lead.channels_available)
-                      ? lead.channels_available
-                      : ["linkedin"]
-                    ).map((ch) => (
-                      <span key={ch} title={ch} className="text-sm">
-                        {CHANNEL_ICONS[ch] || "🔗"}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="p-3">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      STATUS_COLORS[lead.status] || "bg-gray-100"
-                    }`}
+            <AnimatePresence mode="popLayout">
+              {visibleLeads.map((lead, index) => {
+                const meta = LEAD_STATUS_META[lead.status] || LEAD_STATUS_META.new;
+                const isSelected = selected.has(lead.id);
+                const isActionable = lead.status === "new" || lead.status === "selected";
+                return (
+                  <motion.tr
+                    key={lead.id}
+                    layout
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.16, delay: index * 0.015 }}
+                    className={`border-t border-border-subtle cursor-pointer transition-colors ${isSelected ? "bg-green-bg" : ""} ${meta.dimmed ? "opacity-60" : "hover:bg-surface/70"}`}
+                    onClick={() => setActiveLead(lead)}
                   >
-                    {lead.status}
-                  </span>
-                </td>
-                <td className="p-3 text-gray-500 text-xs">
-                  {lead.post_date || lead.discovered_at?.slice(0, 10) || "—"}
-                </td>
-                <td className="p-3">
-                  {lead.post_url && lead.post_url !== "N/A" ? (
-                    <a
-                      href={lead.post_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      View →
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            ))}
+                    <td className="p-3" onClick={(event) => event.stopPropagation()}>
+                      {isActionable ? (
+                        <input type="checkbox" checked={isSelected} onClick={() => toggle(lead.id)} readOnly aria-label={`Select ${lead.name}`} />
+                      ) : (
+                        <span className="text-green">✓</span>
+                      )}
+                    </td>
+                    <td className="p-3 min-w-[220px]">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-text-primary">{lead.name}</span>
+                        <span className="text-xs text-text-muted">{lead.company || "Unknown company"} · {lead.location || "Unknown"}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 max-w-[260px]">
+                      <p className="text-text-secondary truncate" title={lead.role_seeking}>{lead.role_seeking || "-"}</p>
+                      {lead.salary ? <p className="mt-1 text-[11px] font-mono text-green">{lead.salary}</p> : null}
+                    </td>
+                    <td className="p-3"><Stars rating={lead.rating} /></td>
+                    <td className="p-3"><ContactBadges lead={lead} /></td>
+                    <td className="p-3"><StatusBadge status={lead.status} /></td>
+                    <td className="p-3 text-xs text-text-muted font-mono whitespace-nowrap">{lead.post_date || "-"}</td>
+                  </motion.tr>
+                );
+              })}
+            </AnimatePresence>
           </tbody>
         </table>
       </div>
+
+      <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        <AnimatePresence mode="popLayout">
+          {visibleLeads.map((lead, index) => {
+            const meta = LEAD_STATUS_META[lead.status] || LEAD_STATUS_META.new;
+            const isSelected = selected.has(lead.id);
+            const isActionable = lead.status === "new" || lead.status === "selected";
+            return (
+              <motion.article
+                key={lead.id}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.2, delay: index * 0.02 }}
+                className={`p-4 border rounded-lg bg-surface ${isSelected ? "border-green-border bg-green-bg" : "border-border"} ${meta.dimmed ? "opacity-65" : ""}`}
+                onClick={() => setActiveLead(lead)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div onClick={(event) => event.stopPropagation()}>
+                      {isActionable ? (
+                        <input type="checkbox" checked={isSelected} onClick={() => toggle(lead.id)} readOnly aria-label={`Select ${lead.name}`} />
+                      ) : (
+                        <span className="text-green">✓</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-text-dim">#{lead.id}</span>
+                        <Stars rating={lead.rating} />
+                      </div>
+                      <p className="font-medium text-sm mt-0.5 truncate">{lead.name}</p>
+                      <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{lead.role_seeking}</p>
+                      <p className="text-xs text-text-muted mt-1 truncate">{lead.company || "Unknown"} · {lead.location || "UAE"}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={lead.status} />
+                </div>
+              </motion.article>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      {activeLead ? (
+        <LeadDetail
+          lead={activeLead}
+          onClose={() => setActiveLead(null)}
+          onShortlist={(id) => onSelect([id])}
+          onPrepare={(id) => onPrepare([id])}
+          loading={loading}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: Lead["status"] }) {
+  const meta = LEAD_STATUS_META[status] || LEAD_STATUS_META.new;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium whitespace-nowrap" style={{ color: meta.color }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: meta.color }} />
+      {meta.label}
+    </span>
+  );
+}
+
+function ContactBadges({ lead }: { lead: Lead }) {
+  return (
+    <div className="flex gap-1">
+      {lead.contact_email ? <span className="badge-contact" title={lead.contact_email}>@</span> : null}
+      {lead.contact_linkedin ? <span className="badge-contact" title={lead.contact_linkedin}>in</span> : null}
+      {lead.contact_phone ? <span className="badge-contact" title={lead.contact_phone}>tel</span> : null}
+      {!lead.contact_email && !lead.contact_linkedin && !lead.contact_phone ? <span className="text-text-dim text-xs">-</span> : null}
+    </div>
+  );
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex gap-0.5" title={`${rating}/5`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} className="text-[11px]" style={{ color: i <= rating ? "var(--color-yellow)" : "var(--color-border)" }}>
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function TH({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="p-3 text-left text-[11px] font-medium text-text-muted uppercase tracking-wider whitespace-nowrap" style={{ fontFamily: "var(--font-mono)" }}>
+      {children}
+    </th>
   );
 }
