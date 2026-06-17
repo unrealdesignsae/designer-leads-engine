@@ -63,6 +63,17 @@ export async function prepareOutreach(ids: number[], profileId?: ProfileId) {
   });
 }
 
+export async function sendOutreach(
+  id: string | number
+): Promise<{ ok: boolean; error?: string; sent_at?: string; outreach?: Outreach }> {
+  const res = await fetch(`${API_BASE}/outreach/send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  return res.json();
+}
+
 export async function patchOutreach(
   id: string | number,
   payload: Partial<Outreach> & { lead_id?: number; lead_status?: Lead["status"] }

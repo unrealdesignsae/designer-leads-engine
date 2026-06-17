@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { patchOutreach } from "@/lib/api";
+import { patchOutreach, sendOutreach } from "@/lib/api";
 import { LEAD_STATUS_META } from "@/lib/outreach";
 import { useProfiles } from "@/lib/profiles";
 import { useLeads } from "@/lib/store";
@@ -20,6 +20,7 @@ export default function OutreachPage() {
   const { state, dispatch } = useLeads();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [sending, setSending] = useState<Record<string, boolean>>({});
 
   const grouped = useMemo(
     () =>
@@ -30,24 +31,30 @@ export default function OutreachPage() {
     [state.outreach]
   );
 
-  async function markSent(row: Outreach) {
+  async function sendNow(row: Outreach) {
+    const lead = state.leads.find((item) => item.id === row.lead_id) || row.lead;
+    const who = lead?.name || `Lead #${row.lead_id}`;
+    if (!window.confirm(`Send this ${row.channel} message to ${who} now? This sends for real.`)) {
+      return;
+    }
+    setSending((current) => ({ ...current, [String(row.id)]: true }));
     try {
-      const sentAt = new Date().toISOString();
-      const next = await patchOutreach(row.id, {
-        status: "sent",
-        sent_at: sentAt,
-        lead_id: row.lead_id,
-        lead_status: "sent",
-        profile_id: row.profile_id,
-      });
+      const result = await sendOutreach(row.id);
+      if (!result.ok) {
+        toast(result.error || "Send failed", "error");
+        return;
+      }
+      const sentAt = result.sent_at || new Date().toISOString();
       dispatch({
         type: "UPDATE_OUTREACH",
-        outreach: { ...row, ...next, sent_at: sentAt, status: "sent" },
+        outreach: { ...row, ...(result.outreach || {}), sent_at: sentAt, status: "sent" },
         leadStatus: "sent",
       });
-      toast("Marked sent", "success");
+      toast(`Sent to ${who}`, "success");
     } catch {
-      toast("Failed to update outreach", "error");
+      toast("Send request failed", "error");
+    } finally {
+      setSending((current) => ({ ...current, [String(row.id)]: false }));
     }
   }
 
@@ -91,11 +98,12 @@ export default function OutreachPage() {
         <p className="text-text-muted text-sm mt-2">
           Prepared messages for {activeProfile.name}.
         </p>
-        <div className="mt-3 inline-flex items-start gap-2 rounded-lg border border-yellow/30 bg-yellow/5 px-3 py-2 text-xs text-text-secondary">
-          <span className="text-yellow">●</span>
+        <div className="mt-3 inline-flex items-start gap-2 rounded-lg border border-green-border bg-green/5 px-3 py-2 text-xs text-text-secondary">
+          <span className="text-green">●</span>
           <span>
-            This system never sends. Copy a message, send it yourself on LinkedIn or email,
-            then click <span className="text-text-primary font-medium">I sent this</span> to log it.
+            <span className="text-text-primary font-medium">Send</span> delivers the message for real
+            through its channel, then marks it sent. You confirm each send. Requires the channel
+            provider to be connected (LinkedIn via Unipile, email via Resend).
           </span>
         </div>
       </motion.div>
@@ -152,8 +160,8 @@ export default function OutreachPage() {
                     {row.status !== "replied" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {row.status === "ready_to_send" ? (
-                          <button type="button" onClick={() => markSent(row)} title="Logs that you already sent this manually. Does not send anything." className="px-3 py-1.5 rounded-md border border-green-border text-xs text-green">
-                            I sent this
+                          <button type="button" onClick={() => sendNow(row)} disabled={sending[String(row.id)]} title="Sends this message for real through its channel provider, then marks it sent." className="px-3 py-1.5 rounded-md bg-green text-black text-xs font-medium disabled:opacity-50">
+                            {sending[String(row.id)] ? "Sending…" : `Send ${row.channel}`}
                           </button>
                         ) : null}
                         <button type="button" onClick={() => markReplied(row, false)} className="px-3 py-1.5 rounded-md border border-border text-xs text-text-secondary">
