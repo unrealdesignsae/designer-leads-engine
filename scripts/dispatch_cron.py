@@ -134,6 +134,24 @@ def unipile_send_email(to_name, to_email, subject, body):
     return resp
 
 
+def unipile_get_linkedin_provider_id(public_identifier):
+    url = f"{UNIPILE_BASE}/users/{urllib.parse.quote(public_identifier)}?account_id={urllib.parse.quote(LINKEDIN_ACCOUNT_ID)}"
+    req = urllib.request.Request(url, headers={
+        "X-API-KEY": UNIPILE_KEY,
+        "accept": "application/json",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        return None, f"LinkedIn user resolution failed HTTP {e.code}: {body[:500]}"
+    provider_id = data.get("provider_id")
+    if not provider_id:
+        return None, f"LinkedIn user resolution returned no provider_id: {str(data)[:500]}"
+    return provider_id, None
+
+
 def unipile_start_chat(account_id, attendee_id, text):
     url = f"{UNIPILE_BASE}/chats"
     args = [
@@ -174,8 +192,11 @@ def process_item(item):
         contact = lead.get("contact_linkedin")
         if not contact:
             return False, "No contact_linkedin on lead record"
-        # Unipile requires provider internal ID, not public slug. Current plan also blocks LinkedIn send.
-        return False, "LinkedIn send blocked: Unipile subscription does not include LinkedIn messaging, and public slugs need provider-id resolution."
+        provider_id, err = unipile_get_linkedin_provider_id(contact)
+        if err:
+            return False, err
+        ok, send_err, ref = unipile_start_chat(LINKEDIN_ACCOUNT_ID, provider_id, item["message_body"])
+        return (True, ref) if ok else (False, send_err)
 
     if channel == "whatsapp":
         contact = lead.get("contact_phone")
