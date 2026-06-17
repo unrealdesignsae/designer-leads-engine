@@ -60,6 +60,8 @@ Black
 unreal.ae`,
     whatsapp:
       "Hey {name}, saw your post about looking for a {role_seeking} at {company}. I'm Black, Creative Technology & CG Director at unreal.ae in Dubai. I specialize in real-time 3D and Unreal Engine for events and exhibitions. Portfolio: {portfolio_url}. Full CV: {pdf_url}. Available for freelance work if useful.",
+    instagram:
+      "Hey {name}, saw your post about {role_seeking}. I'm Black from unreal.ae Dubai — real-time 3D, Unreal Engine, events & exhibitions. Portfolio: {portfolio_url} (password protected). Full CV: {pdf_url}. Available for freelance — would love to connect.",
   },
   portfolio_url: "https://aries-black-portfolio.vercel.app/",
   pdf_url: "https://drive.google.com/file/d/1Ql5IgVXXC9CSIDtM6emNKsX055UVNIn4/view?usp=sharing",

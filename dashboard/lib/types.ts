@@ -11,10 +11,11 @@ export type LeadStatus =
   | "declined"
   | "failed";
 
-export type OutreachChannel = "linkedin" | "email" | "whatsapp";
+export type OutreachChannel = "linkedin" | "email" | "whatsapp" | "instagram";
 
 export type OutreachStatus =
   | "ready_to_send"
+  | "queued"
   | "sent"
   | "replied"
   | "bounced"
@@ -24,6 +25,7 @@ export interface MessageTemplates {
   linkedin: string;
   email: string;
   whatsapp: string;
+  instagram: string;
 }
 
 export interface Profile {

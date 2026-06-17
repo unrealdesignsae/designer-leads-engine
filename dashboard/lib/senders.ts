@@ -1,8 +1,7 @@
 import type { Lead } from "./types";
 
 // Real message senders. Each returns ok:true only on a confirmed provider send.
-// If credentials are missing, returns a precise error so the UI shows WHY nothing
-// went out instead of silently doing nothing.
+// Email is intentionally disabled — user does not want info@unreal.ae used.
 
 export type SendResult = { ok: true; ref?: string } | { ok: false; error: string };
 
@@ -13,7 +12,7 @@ export async function sendMessage(
 ): Promise<SendResult> {
   switch (channel) {
     case "email":
-      return sendEmail(lead, body);
+      return { ok: false, error: "Email sending is disabled. Use LinkedIn or WhatsApp." };
     case "linkedin":
       return sendLinkedIn(lead, body);
     case "whatsapp":
@@ -23,46 +22,7 @@ export async function sendMessage(
   }
 }
 
-// ---- Email via Resend ----
-async function sendEmail(lead: Lead, body: string): Promise<SendResult> {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
-  if (!key || !from) {
-    return {
-      ok: false,
-      error: "Email not configured. Set RESEND_API_KEY and RESEND_FROM in env.",
-    };
-  }
-  if (!lead.contact_email) {
-    return { ok: false, error: `${lead.name || "Lead"} has no email address.` };
-  }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: lead.contact_email,
-        subject: process.env.RESEND_SUBJECT || "Quick note",
-        text: body,
-      }),
-    });
-    if (!res.ok) {
-      const detail = await res.text();
-      return { ok: false, error: `Resend ${res.status}: ${detail.slice(0, 200)}` };
-    }
-    const data = await res.json();
-    return { ok: true, ref: data?.id };
-  } catch (e) {
-    return { ok: false, error: `Email send failed: ${(e as Error).message}` };
-  }
-}
-
 // ---- LinkedIn via Unipile ----
-// Requires a LinkedIn account CONNECTED inside Unipile, plus the DSN + account_id.
 async function sendLinkedIn(lead: Lead, body: string): Promise<SendResult> {
   const dsn = process.env.UNIPILE_DSN;
   const key = process.env.UNIPILE_API_KEY;
@@ -71,7 +31,7 @@ async function sendLinkedIn(lead: Lead, body: string): Promise<SendResult> {
     return {
       ok: false,
       error:
-        "LinkedIn not connected. Set UNIPILE_DSN, UNIPILE_API_KEY, and UNIPILE_LINKEDIN_ACCOUNT_ID (LinkedIn must be connected in your Unipile account).",
+        "LinkedIn not connected. Set UNIPILE_DSN, UNIPILE_API_KEY, and UNIPILE_LINKEDIN_ACCOUNT_ID.",
     };
   }
   const identifier = lead.contact_linkedin;
@@ -81,7 +41,6 @@ async function sendLinkedIn(lead: Lead, body: string): Promise<SendResult> {
   const base = `https://${dsn.replace(/^https?:\/\//, "")}/api/v1`;
   const headers = { "X-API-KEY": key, "Content-Type": "application/json" };
   try {
-    // Resolve the public handle to Unipile's internal provider id.
     const userRes = await fetch(
       `${base}/users/${encodeURIComponent(identifier)}?account_id=${account}`,
       { headers }
@@ -89,7 +48,7 @@ async function sendLinkedIn(lead: Lead, body: string): Promise<SendResult> {
     if (!userRes.ok) {
       return {
         ok: false,
-        error: `Unipile could not resolve ${identifier} (${userRes.status}). The lead may not be reachable from your account.`,
+        error: `Unipile could not resolve ${identifier} (${userRes.status}).`,
       };
     }
     const user = await userRes.json();
@@ -97,7 +56,6 @@ async function sendLinkedIn(lead: Lead, body: string): Promise<SendResult> {
     if (!providerId) {
       return { ok: false, error: `No provider id for ${identifier}.` };
     }
-    // Start a new chat with the resolved attendee.
     const chatRes = await fetch(`${base}/chats`, {
       method: "POST",
       headers,

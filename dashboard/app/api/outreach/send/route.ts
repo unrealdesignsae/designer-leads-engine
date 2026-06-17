@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase, updateLeadStatus, updateOutreachStatus } from "@/lib/supabase";
-import { sendMessage } from "@/lib/senders";
+import { supabase, updateOutreachStatus } from "@/lib/supabase";
 import type { Lead, Outreach } from "@/lib/types";
 
-// Actually sends a prepared outreach message through its channel's provider,
-// then marks it sent ONLY on a confirmed real send. On failure, records the
-// error on the row and returns it so the UI can show why nothing went out.
+// Dashboard "Send" button now QUEUES the message in Supabase.
+// Hermes (local, with Unipile MCP) picks up queued items and actually sends them.
+// This way the dashboard never touches Unipile/Resend credentials directly.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const id = body.id;
@@ -33,24 +32,27 @@ export async function POST(request: Request) {
   if (row.status === "sent") {
     return NextResponse.json({ ok: true, alreadySent: true });
   }
+  if (row.status === "queued") {
+    return NextResponse.json({ ok: true, alreadyQueued: true });
+  }
   if (!row.lead) {
     return NextResponse.json({ ok: false, error: "Lead not found for this row." }, { status: 404 });
   }
 
-  const result = await sendMessage(row.channel, row.lead, row.message_body);
-
-  if (!result.ok) {
-    await updateOutreachStatus(id, { error: result.error });
-    return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
-  }
-
-  const sentAt = new Date().toISOString();
-  const updated = await updateOutreachStatus(id, {
-    status: "sent",
-    sent_at: sentAt,
+  // Queue the message — Hermes picks it up and sends via Unipile MCP
+  const queuedAt = new Date().toISOString();
+  await updateOutreachStatus(id, {
+    status: "queued",
+    prepared_at: queuedAt,
     error: null,
   });
-  await updateLeadStatus(row.lead.id, "sent", { contacted_at: sentAt });
 
-  return NextResponse.json({ ok: true, outreach: updated, sent_at: sentAt, ref: result.ref });
+  return NextResponse.json({
+    ok: true,
+    queued: true,
+    channel: row.channel,
+    lead_name: row.lead.name,
+    sent_at: queuedAt,
+    note: "Queued for Hermes to send via Unipile MCP.",
+  });
 }

@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       linkedin: String(body.message_templates?.linkedin || ""),
       email: String(body.message_templates?.email || ""),
       whatsapp: String(body.message_templates?.whatsapp || ""),
+      instagram: String(body.message_templates?.instagram || ""),
     },
     portfolio_url: String(body.portfolio_url || DEFAULT_PROFILE.portfolio_url),
     pdf_url: String(body.pdf_url || DEFAULT_PROFILE.pdf_url),

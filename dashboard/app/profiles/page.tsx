@@ -65,6 +65,7 @@ export default function ProfilesPage() {
           linkedin: form.linkedin.trim(),
           email: form.email.trim(),
           whatsapp: form.whatsapp.trim(),
+          instagram: (form as any).instagram?.trim?.() || form.linkedin.trim(),
         },
         portfolio_url: form.portfolio_url.trim(),
         pdf_url: form.pdf_url.trim(),

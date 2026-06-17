@@ -54,6 +54,7 @@ export function profileTemplates(profile: Profile): MessageTemplates {
     linkedin: profile.message_templates.linkedin || "",
     email: profile.message_templates.email || "",
     whatsapp: profile.message_templates.whatsapp || "",
+    instagram: profile.message_templates.instagram || profile.message_templates.linkedin || "",
   };
 }
 
@@ -65,7 +66,7 @@ export function buildPreparedOutreachRows(
   const templates = profileTemplates(profile);
   const channels = (lead.channels_available || []).filter(
     (channel): channel is OutreachChannel =>
-      channel === "linkedin" || channel === "email" || channel === "whatsapp"
+      channel === "linkedin" || channel === "email" || channel === "whatsapp" || channel === "instagram"
   );
 
   return channels.map((channel, index) => ({

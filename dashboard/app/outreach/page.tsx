@@ -13,6 +13,7 @@ const CHANNELS: { key: OutreachChannel; label: string; icon: string }[] = [
   { key: "linkedin", label: "LinkedIn DM", icon: "in" },
   { key: "email", label: "Email", icon: "@" },
   { key: "whatsapp", label: "WhatsApp", icon: "WA" },
+  { key: "instagram", label: "Instagram", icon: "IG" },
 ];
 
 interface LeadGroup {
