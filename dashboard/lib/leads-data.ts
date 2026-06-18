@@ -70,7 +70,65 @@ unreal.ae`,
   is_active: true,
 };
 
-export const SEED_PROFILES: Profile[] = [DEFAULT_PROFILE];
+export const CEO_EXPANSION_PROFILE: Profile = {
+  id: "ceo-expansion-gcc",
+  name: "CEO Expansion Leads (GCC)",
+  slug: "ceo-expansion-gcc",
+  description:
+    "Mid-size company CEOs in GCC who are expanding teams or restructuring — target for creative technology and spatial design consulting.",
+  icp_keywords: [
+    "CEO", "Managing Director", "Founder", "expansion", "restructuring",
+    "mid-size", "SME", "GCC", "Dubai", "Riyadh", "Abu Dhabi", "Doha",
+  ],
+  scan_queries: [
+    'site:linkedin.com/posts "expanding our team" OR "growing our team" CEO OR "managing director" OR founder dubai OR riyadh 2026',
+    'site:linkedin.com/posts "restructuring" OR "new division" OR "scaling up" CEO OR founder mid-size UAE OR KSA OR qatar 2026',
+    'site:linkedin.com/posts "hiring" CEO OR "managing director" OR "head of" dubai OR riyadh expansion OR growth 2026',
+    'GCC mid-size company CEO expansion restructuring hiring team dubai riyadh 2026',
+  ],
+  message_templates: {
+    linkedin: `Hi {name},
+
+I noticed {company} is in a growth phase and expanding the team.
+
+I'm Black, Creative Technology & CG Director at unreal.ae in Dubai. I help mid-size companies optimize their spatial design, real-time 3D, and creative technology workflows as they scale.
+
+Portfolio (pw: 2403): {portfolio_url}
+CV: {pdf_url}
+
+Would love to explore how we could support your expansion.
+
+Best,
+Black`,
+    email: `Subject: Creative technology support for {company}
+
+Hi {name},
+
+Noticed {company} is expanding — exciting phase.
+
+I'm Black, Creative Technology & CG Director at unreal.ae in Dubai. I specialize in real-time 3D, Unreal Engine, and spatial design for mid-size companies scaling across GCC.
+
+Portfolio (password: 2403): {portfolio_url}
+Full CV/PDF: {pdf_url}
+
+Open to a call to explore how we could support your team's growth.
+
+Best,
+Black
+unreal.ae`,
+    whatsapp:
+      "Hi {name}, saw {company} is expanding. I'm Black from unreal.ae Dubai — creative tech & spatial design for mid-size companies scaling up. Portfolio (pw: 2403): {portfolio_url}. CV: {pdf_url}. Worth a chat?",
+    instagram:
+      "Hi {name}, saw {company} is growing. I'm Black from unreal.ae Dubai — creative tech partner for mid-size companies in GCC. Portfolio (pw: 2403): {portfolio_url}.",
+  },
+  portfolio_url: "https://black-portfolio-chi.vercel.app/",
+  pdf_url: "https://drive.google.com/file/d/19KjA5-J_v2b9OfJgYVKnJfVTF0m-pp35/view?usp=sharing",
+  accent_color: "#8B5CF6",
+  created_at: "2026-06-18T00:00:00Z",
+  is_active: true,
+};
+
+export const SEED_PROFILES: Profile[] = [DEFAULT_PROFILE, CEO_EXPANSION_PROFILE];
 
 const RAW_VAULT_LEADS: Omit<Lead, "profile_id" | "profile_slug">[] = [
   {
